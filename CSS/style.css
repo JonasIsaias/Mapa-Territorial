@@ -1,0 +1,195 @@
+body{
+    margin:0;
+    background:#f4f6f9;
+    font-family:'Segoe UI',sans-serif;
+}
+
+/* ==========================
+   LAYOUT
+========================== */
+
+.app-container{
+    display:flex;
+    height:100vh;
+    overflow:hidden;
+}
+
+/* ==========================
+   SIDEBAR
+========================== */
+
+.sidebar{
+    width:380px;
+    min-width:380px;
+    background:#ffffff;
+    overflow-y:auto;
+    border-right:1px solid #e5e7eb;
+    padding:20px;
+}
+
+.sidebar-header{
+    margin-bottom:20px;
+}
+
+.sidebar-header h3{
+    font-size:1.4rem;
+    font-weight:700;
+    color:#1e3a8a;
+}
+
+.sidebar-header p{
+    color:#6b7280;
+    margin:0;
+}
+
+/* ==========================
+   CARDS
+========================== */
+
+.sidebar-card{
+    background:#fff;
+    border-radius:14px;
+    padding:15px;
+    box-shadow:
+        0 2px 10px
+        rgba(0,0,0,.05);
+}
+
+/* ==========================
+   RESULTADO
+========================== */
+
+.resultado-item{
+    margin-bottom:10px;
+    padding-bottom:8px;
+    border-bottom:
+        1px solid #f1f1f1;
+}
+
+/* ==========================
+   MAPA
+========================== */
+
+.map-container{
+    flex:1;
+    position:relative;
+}
+
+#mapa{
+    width:100%;
+    height:100vh;
+}
+
+/* ==========================
+   BOTÕES
+========================== */
+
+.btn{
+    border-radius:10px;
+}
+
+/* ==========================
+   INPUTS
+========================== */
+
+.form-control{
+    border-radius:10px;
+    min-height:48px;
+}
+
+/* ==========================
+   LEGENDA
+========================== */
+
+.legend-item{
+    margin-bottom:8px;
+    font-size:.95rem;
+}
+
+/* ==========================
+   VIZINHOS
+========================== */
+
+#listaVizinhos{
+    margin:0;
+    padding-left:20px;
+}
+
+#listaVizinhos li{
+    padding:5px 0;
+}
+
+/* ==========================
+   SCROLL
+========================== */
+
+.sidebar::-webkit-scrollbar{
+    width:6px;
+}
+
+.sidebar::-webkit-scrollbar-thumb{
+    background:#cbd5e1;
+    border-radius:20px;
+}
+
+/* ========================================
+   LEGENDA MODERNA
+======================================== */
+
+.legend-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:10px;
+    font-size:14px;
+    font-weight:500;
+}
+
+.legend-dot{
+    width:18px;
+    height:18px;
+    border-radius:50%;
+    display:inline-block;
+    border:2px solid rgba(0,0,0,.15);
+    flex-shrink:0;
+}
+
+.legend-dot.red{
+    background:#EF4444;
+}
+
+.legend-dot.blue{
+    background:#3B82F6;
+}
+
+.legend-dot.orange{
+    background:#F59E0B;
+}
+
+.legend-dot.dark{
+    background:#374151;
+}
+
+/* ==========================
+   MOBILE
+========================== */
+
+@media(max-width:992px){
+
+    .app-container{
+        flex-direction:column;
+    }
+
+    .sidebar{
+        width:100%;
+        min-width:100%;
+        height:auto;
+        border-right:none;
+        border-bottom:1px solid #ddd;
+    }
+
+    #mapa{
+        height:500px;
+    }
+
+}

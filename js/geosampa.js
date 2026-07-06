@@ -1,378 +1,157 @@
-let distritosGeojson = null;
-let subprefeiturasGeojson = null;
-
-/* ==========================================
-   PROJEÇÕES
-========================================== */
-
-proj4.defs(
-    "EPSG:31983",
-    "+proj=utm +zone=23 +south +datum=SIRGAS2000 +units=m +no_defs"
-);
-
-/* ==========================================
-   CARREGAR GEOSAMPA
-========================================== */
-
 async function carregarGeoSampa() {
 
-    try {
+    console.log("Sistema territorial carregado (OpenStreetMap)");
 
-        console.log(
-            "Carregando GeoSampa..."
-        );
-
-        const distritoResponse =
-            await fetch(
-                "./assets/geojson/distritos.geojson"
-            );
-
-        distritosGeojson =
-            await distritoResponse.json();
-
-        const subprefResponse =
-            await fetch(
-                "./assets/geojson/subprefeituras.geojson"
-            );
-
-        subprefeiturasGeojson =
-            await subprefResponse.json();
-
-        converterGeoJson(
-            distritosGeojson
-        );
-
-        converterGeoJson(
-            subprefeiturasGeojson
-        );
-
-        console.log(
-            "GeoSampa carregado."
-        );
-
-        console.log(
-            "Distritos:",
-            distritosGeojson.features.length
-        );
-
-        console.log(
-            "Subprefeituras:",
-            subprefeiturasGeojson.features.length
-        );
-
-    } catch (erro) {
-
-        console.error(
-            "Erro ao carregar GeoSampa",
-            erro
-        );
-    }
 }
 
-/* ==========================================
-   CONVERTER GEOJSON
-========================================== */
 
-function converterGeoJson(
-    geojson
-) {
+   //municipios + bairros
+async function obterMunicipiosPorRaio(lat, lon, raioKm) {
 
-    geojson.features.forEach(
-        feature => {
+    const origem = turf.point([lon, lat]);
 
-            const geometria =
-                feature.geometry;
+    /* ---------------- bairros ---------------- */
 
-            if (
-                geometria.type ===
-                "Polygon"
-            ) {
+    const query = `
+[out:json][timeout:30];
 
-                geometria.coordinates =
-                    geometria.coordinates.map(
-                        anel =>
-                            anel.map(
-                                converterCoordenada
-                            )
-                    );
-            }
+(
+    node["place"~"suburb|neighbourhood|quarter"]
+    (around:${raioKm * 1000},${lat},${lon});
+);
 
-            if (
-                geometria.type ===
-                "MultiPolygon"
-            ) {
+out body;
+`;
 
-                geometria.coordinates =
-                    geometria.coordinates.map(
-                        poligono =>
-                            poligono.map(
-                                anel =>
-                                    anel.map(
-                                        converterCoordenada
-                                    )
-                            )
-                    );
+    const response = await HttpClientGeo.request(
+        "https://overpass-api.de/api/interpreter",
+        {
+            method: "POST",
+            body: query,
+            headers: {
+                "Content-Type": "text/plain"
             }
         }
     );
-}
 
-/* ==========================================
-   UTM -> WGS84
-========================================== */
-
-function converterCoordenada(
-    coordenada
-) {
-
-    const resultado =
-        proj4(
-            "EPSG:31983",
-            "EPSG:4326",
-            coordenada
-        );
-
-    return [
-        resultado[0],
-        resultado[1]
-    ];
-}
-
-/* ==========================================
-   LAT/LON -> UTM
-========================================== */
-
-function converterParaUTM(
-    latitude,
-    longitude
-) {
-
-    const resultado =
-        proj4(
-            "EPSG:4326",
-            "EPSG:31983",
-            [
-                longitude,
-                latitude
-            ]
-        );
-
-    return {
-
-        x: resultado[0],
-        y: resultado[1]
-
-    };
-}
-
-/* ==========================================
-   DISTRITO
-========================================== */
-
-function localizarDistrito(
-    latitude,
-    longitude
-) {
-
-    const ponto =
-        turf.point([
-            longitude,
-            latitude
-        ]);
-
-    for (
-        const distrito of
-        distritosGeojson.features
-    ) {
-
-        if (
-            turf.booleanPointInPolygon(
-                ponto,
-                distrito
-            )
-        ) {
-
-            return distrito.properties;
-        }
-    }
-
-    return null;
-}
-
-/* ==========================================
-   SUBPREFEITURA
-========================================== */
-
-function localizarSubprefeitura(
-    latitude,
-    longitude
-) {
-
-    const ponto =
-        turf.point([
-            longitude,
-            latitude
-        ]);
-
-    for (
-        const subprefeitura of
-        subprefeiturasGeojson.features
-    ) {
-
-        if (
-            turf.booleanPointInPolygon(
-                ponto,
-                subprefeitura
-            )
-        ) {
-
-            return subprefeitura.properties;
-        }
-    }
-
-    return null;
-}
-
-/* ==========================================
-   FEATURE DISTRITO
-========================================== */
-
-function obterDistritoFeature(
-    nomeDistrito
-) {
-
-    return distritosGeojson.features.find(
-        distrito =>
-            distrito.properties
-                .nm_distrito_municipal ===
-            nomeDistrito
-    );
-}
-
-/* ==========================================
-   FEATURE SUBPREFEITURA
-========================================== */
-
-function obterSubprefeituraFeature(
-    nomeSubprefeitura
-) {
-
-    return subprefeiturasGeojson.features.find(
-        subprefeitura =>
-            subprefeitura.properties
-                .nm_subprefeitura ===
-            nomeSubprefeitura
-    );
-}
-
-/* ==========================================
-   DISTRITOS VIZINHOS
-========================================== */
-
-function obterDistritosVizinhos(
-    nomeDistrito
-) {
-
-    const distritoAtual =
-        obterDistritoFeature(
-            nomeDistrito
-        );
-
-    if (!distritoAtual)
+    if (!response?.elements?.length)
         return [];
 
-    const vizinhos = [];
+    const municipiosMap = new Map();
 
-    for (
-        const distrito of
-        distritosGeojson.features
-    ) {
+    for (const item of response.elements) {
 
-        if (
-            distrito.properties
-                .nm_distrito_municipal ===
-            nomeDistrito
-        ) {
-            continue;
+        const distancia = turf.distance(
+            origem,
+            turf.point([item.lon, item.lat]),
+            { units: "kilometers" }
+        );
+
+        /* ---------------- Reverse Geocoding ---------------- */
+
+        const reverse = await HttpClientGeo.request(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${item.lat}&lon=${item.lon}`
+        );
+
+        const address = reverse.address || {};
+
+        const municipio =
+
+            address.city ||
+
+            address.town ||
+
+            address.municipality ||
+
+            address.county ||
+
+            address.state_district ||
+
+            "Município";
+
+        if (!municipiosMap.has(municipio)) {
+
+            municipiosMap.set(municipio, {
+
+                nome: municipio,
+
+                lat: item.lat,
+
+                lon: item.lon,
+
+                distancia: Number(distancia.toFixed(2)),
+
+                bairros: []
+
+            });
+
         }
 
-        const intersecta =
-            turf.booleanIntersects(
-                distritoAtual,
-                distrito
-            );
+        const registro = municipiosMap.get(municipio);
 
-        if (intersecta) {
+        registro.bairros.push({
 
-            vizinhos.push(
-                distrito
-            );
+            nome: item.tags?.name || "Bairro",
+
+            tipo: item.tags?.place || "",
+
+            lat: item.lat,
+
+            lon: item.lon,
+
+            distancia: Number(distancia.toFixed(2))
+
+        });
+
+        /* Mantém a menor distância do município */
+
+        if (distancia < registro.distancia) {
+
+            registro.distancia = Number(distancia.toFixed(2));
+
+            registro.lat = item.lat;
+
+            registro.lon = item.lon;
+
         }
+
     }
 
-    return vizinhos;
-}
+    const municipios = [...municipiosMap.values()];
 
-/* ==========================================
-   DEBUG
-========================================== */
+    municipios.forEach(m =>
 
-function listarDistritos() {
+        m.bairros.sort(
+            (a, b) => a.distancia - b.distancia
+        )
 
-    return distritosGeojson.features.map(
-        distrito =>
-            distrito.properties
-                .nm_distrito_municipal
     );
-}
 
-function listarSubprefeituras() {
-
-    return subprefeiturasGeojson.features.map(
-        subprefeitura =>
-            subprefeitura.properties
-                .nm_subprefeitura
+    municipios.sort(
+        (a, b) => a.distancia - b.distancia
     );
+
+    return municipios;
+
 }
 
-function obterRegioesLimitrofes(
-    regiao
-) {
+   //todos os bairros
+async function obterBairrosPorRaio(lat, lon, raioKm) {
 
-    const regioes = {
+    const municipios =
+        await obterMunicipiosPorRaio(
+            lat,
+            lon,
+            raioKm
+        );
 
-        "Centro": [
-            "Norte",
-            "Sul",
-            "Leste",
-            "Oeste"
-        ],
+    return municipios
+        .flatMap(m =>
+            m.bairros.map(b => ({
+                ...b,
+                municipio: m.nome
+            }))
+        )
+        .sort((a, b) => a.distancia - b.distancia);
 
-        "Norte": [
-            "Centro",
-            "Oeste",
-            "Leste"
-        ],
-
-        "Sul": [
-            "Centro",
-            "Oeste",
-            "Leste"
-        ],
-
-        "Leste": [
-            "Centro",
-            "Norte",
-            "Sul"
-        ],
-
-        "Oeste": [
-            "Centro",
-            "Norte",
-            "Sul"
-        ]
-
-    };
-
-    return regioes[regiao] || [];
 }
